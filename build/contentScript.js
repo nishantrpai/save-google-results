@@ -12,7 +12,6 @@ const chromeAPI = typeof chrome !== 'undefined' ? chrome : null;
 let isProcessing = false;
 let currentUrl = window.location.href;
 let isCollectionActive = false;
-let buttonsVisible = false;
 
 // Storage keys
 const STORAGE_KEY_CONTENT = 'google_search_results';
@@ -135,7 +134,6 @@ async function processResults() {
         });
         
         await saveResults(data);
-        await updateButtonText();
         console.log(`Google Results Collector: Added ${newCount} new results. Total: ${data.results.length - 1}`);
         return newCount;
     } catch (error) {
@@ -152,8 +150,7 @@ async function downloadCSV() {
         const data = await getStoredResults();
         
         if (data.results.length <= 1) {
-            showNotification('No data to download');
-            return;
+            return; // No data to download
         }
         
         // Create CSV with metadata rows at the top
@@ -186,10 +183,8 @@ async function downloadCSV() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        showNotification('CSV downloaded successfully!', 'hsl(142 76% 36%)');
     } catch (error) {
         console.error('Error downloading CSV:', error);
-        showNotification('Error downloading CSV', 'hsl(0 62.8% 30.6%)');
     }
 }
 
@@ -201,165 +196,30 @@ async function clearResults() {
         } else {
             localStorage.removeItem(STORAGE_KEY_CONTENT);
         }
-        await updateButtonText();
-        showNotification('All results cleared', 'hsl(45 93% 47%)');
         console.log('Google Results Collector: Cleared all stored results');
     } catch (error) {
         console.error('Error clearing results:', error);
     }
 }
 
-// Update button text with current count
+// Update button text with current count - removed (managed by popup)
 async function updateButtonText() {
-    const data = await getStoredResults();
-    const count = data.results.length - 1; // Subtract header row
-    const downloadBtn = document.getElementById('google-csv-download');
-    if (downloadBtn) {
-        downloadBtn.textContent = `Download CSV (${count})`;
-    }
+    // Function removed - UI now managed by popup
 }
 
-// Show notification to user
+// Show notification to user - removed (managed by popup)
 function showNotification(message, color = 'hsl(0 0% 15%)') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${color};
-        color: hsl(0 0% 100%);
-        padding: 12px 16px;
-        border-radius: 6px;
-        border: 1px solid hsl(0 0% 25%);
-        z-index: 10000;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        max-width: 300px;
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
-    }, 3000);
+    // Function removed - notifications now managed by popup
 }
 
-// Create control buttons
+// Create control buttons - removed (managed by popup)
 async function createButtons() {
-    if (!isCollectionActive) {
-        removeButtons();
-        return;
-    }
-
-    // Remove existing buttons
-    const existingButtons = document.querySelectorAll('[id^="google-csv-"]');
-    existingButtons.forEach(btn => btn.remove());
-
-    // Button container
-    const container = document.createElement('div');
-    container.id = 'google-csv-container';
-    container.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        display: flex;
-        gap: 8px;
-        z-index: 10000;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    `;
-
-    // Download button (icon only) - Feather download icon
-    const downloadBtn = document.createElement('button');
-    downloadBtn.id = 'google-csv-download';
-    downloadBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7,10 12,15 17,10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-    `;
-    downloadBtn.style.cssText = `
-        background: hsl(142 76% 36%);
-        color: hsl(0 0% 100%);
-        padding: 0;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        transition: all 0.2s ease;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-    downloadBtn.onmouseover = () => {
-        downloadBtn.style.background = 'hsl(142 76% 32%)';
-        downloadBtn.style.transform = 'translateY(-1px)';
-    };
-    downloadBtn.onmouseout = () => {
-        downloadBtn.style.background = 'hsl(142 76% 36%)';
-        downloadBtn.style.transform = 'translateY(0)';
-    };
-    downloadBtn.onclick = downloadCSV;
-
-    // Stop button (icon only) - Feather square icon  
-    const stopBtn = document.createElement('button');
-    stopBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-        </svg>
-    `;
-    stopBtn.style.cssText = `
-        background: hsl(0 62.8% 30.6%);
-        color: hsl(0 0% 100%);
-        padding: 0;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        transition: all 0.2s ease;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-    stopBtn.onmouseover = () => {
-        stopBtn.style.background = 'hsl(0 62.8% 25%)';
-        stopBtn.style.transform = 'translateY(-1px)';
-    };
-    stopBtn.onmouseout = () => {
-        stopBtn.style.background = 'hsl(0 62.8% 30.6%)';
-        stopBtn.style.transform = 'translateY(0)';
-    };
-    stopBtn.onclick = stopCollection;
-
-    container.appendChild(downloadBtn);
-    container.appendChild(stopBtn);
-    document.body.appendChild(container);
-
-    buttonsVisible = true;
-    await updateButtonText();
+    // Function removed - UI now managed by popup
 }
 
-// Remove control buttons
+// Remove control buttons - removed (managed by popup)
 function removeButtons() {
-    const container = document.getElementById('google-csv-container');
-    if (container) {
-        container.remove();
-    }
-    const styles = document.getElementById('google-csv-styles');
-    if (styles) {
-        styles.remove();
-    }
-    buttonsVisible = false;
+    // Function removed - UI now managed by popup
 }
 
 // Listen for messages from popup
@@ -377,16 +237,12 @@ if (chromeAPI && chromeAPI.runtime) {
 // Start collection
 async function startCollection() {
     isCollectionActive = true;
-    await createButtons();
     await main();
-    showNotification('Collection started! Results will be collected as you browse.', 'hsl(142 76% 36%)');
 }
 
 // Stop collection
 async function stopCollection() {
     isCollectionActive = false;
-    removeButtons();
-    showNotification('Collection stopped.', 'hsl(45 93% 47%)');
 }
 
 // Main processing function
@@ -400,13 +256,6 @@ async function main() {
 
     // Check collection status
     await checkCollectionStatus();
-    
-    // Update buttons based on collection status
-    if (isCollectionActive && !buttonsVisible) {
-        await createButtons();
-    } else if (!isCollectionActive && buttonsVisible) {
-        removeButtons();
-    }
 
     // Only process results if collection is active
     if (!isCollectionActive) {
@@ -414,10 +263,6 @@ async function main() {
     }
 
     const newResults = await processResults();
-    
-    if (newResults > 0) {
-        showNotification(`Collected ${newResults} new results from this page`);
-    }
 }
 
 // Set up mutation observer for dynamic content

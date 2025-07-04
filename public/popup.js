@@ -7,8 +7,6 @@ const statusCard = document.getElementById('statusCard');
 const statusIndicator = document.getElementById('statusIndicator');
 const statusText = document.getElementById('statusText');
 const toggleBtn = document.getElementById('toggleBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const clearBtn = document.getElementById('clearBtn');
 const resultCountEl = document.getElementById('resultCount');
 const pageCountEl = document.getElementById('pageCount');
 const queriesSection = document.getElementById('queriesSection');
@@ -28,8 +26,6 @@ async function init() {
 // Setup event listeners
 function setupEventListeners() {
     toggleBtn?.addEventListener('click', toggleCollection);
-    downloadBtn?.addEventListener('click', downloadCSV);
-    clearBtn?.addEventListener('click', clearData);
 }
 
 // Update collection status
@@ -49,8 +45,6 @@ async function updateStatus() {
                 Stop Collecting
             `;
             toggleBtn.className = 'button danger';
-            downloadBtn.disabled = false;
-            clearBtn.disabled = false;
         } else {
             statusText.textContent = 'Collection inactive';
             statusCard.className = 'status-card inactive';
@@ -62,8 +56,6 @@ async function updateStatus() {
                 Start Collecting
             `;
             toggleBtn.className = 'button primary';
-            downloadBtn.disabled = totalResults === 0;
-            clearBtn.disabled = totalResults === 0;
         }
     } catch (error) {
         console.error('Error updating status:', error);
@@ -90,23 +82,12 @@ async function updateStats() {
             pageCountEl.textContent = data.metadata.totalPages.toString();
         }
         
-        // Update download button text
-        if (downloadBtn) {
-            downloadBtn.setAttribute('data-tooltip', `Download CSV (${totalResults})`);
-        }
-        
         // Update queries section
         if (data.metadata.queries.length > 0 && queriesSection && queriesList) {
             queriesSection.style.display = 'block';
             queriesList.textContent = data.metadata.queries.join('\n');
         } else if (queriesSection) {
             queriesSection.style.display = 'none';
-        }
-        
-        // Update button states
-        if (!isActive && downloadBtn && clearBtn) {
-            downloadBtn.disabled = totalResults === 0;
-            clearBtn.disabled = totalResults === 0;
         }
     } catch (error) {
         console.error('Error updating stats:', error);
@@ -116,6 +97,7 @@ async function updateStats() {
 // Toggle collection state
 async function toggleCollection() {
     try {
+        const wasActive = isActive;
         isActive = !isActive;
         await chrome.storage.local.set({ [ACTIVE_KEY]: isActive });
         
@@ -135,7 +117,13 @@ async function toggleCollection() {
             // Show notification that collection started
             showNotification('Collection started! Navigate Google search pages to collect results.');
         } else {
-            showNotification('Collection stopped.');
+            // Auto-download CSV when stopping collection
+            if (wasActive && totalResults > 0) {
+                await downloadCSV();
+                showNotification('Collection stopped. CSV downloaded automatically.');
+            } else {
+                showNotification('Collection stopped.');
+            }
         }
     } catch (error) {
         console.error('Error toggling collection:', error);
@@ -186,23 +174,14 @@ async function downloadCSV() {
             saveAs: true
         });
         
-        showNotification('CSV download started!');
+        // Clear data after successful download
+        await chrome.storage.local.remove([STORAGE_KEY]);
+        await updateStats();
+        
+        showNotification('CSV download started! Data cleared for next collection.');
     } catch (error) {
         console.error('Error downloading CSV:', error);
         showNotification('Error downloading CSV');
-    }
-}
-
-// Clear all data
-async function clearData() {
-    try {
-        if (confirm('Are you sure you want to clear all collected data?')) {
-            await chrome.storage.local.remove([STORAGE_KEY]);
-            await updateStats();
-            showNotification('All data cleared');
-        }
-    } catch (error) {
-        console.error('Error clearing data:', error);
     }
 }
 
