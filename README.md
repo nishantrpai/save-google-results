@@ -22,10 +22,10 @@
 ## Preview
 
 ![Extension Popup - Inactive](preview1.webp)
-*Extension popup when collection is inactive*
+*Extension popup when collection is active*
 
 ![Extension Popup - Active](preview2.webp)
-*Extension popup when actively collecting results*
+*Final result as csv*
 
 ## How It Works
 
