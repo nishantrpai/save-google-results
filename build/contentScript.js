@@ -3,144 +3,466 @@ var __webpack_exports__ = {};
 /*!******************************!*\
   !*** ./src/contentScript.js ***!
   \******************************/
-// Content script file will run in the context of web page.
-// With content script you can manipulate the web pages using
-// Document Object Model (DOM).
-// You can also pass information to the parent extension.
+// Google Search Results Collector Chrome Extension
+// Automatically collects search results as you browse Google and allows CSV export
 
-// We execute this script by making an entry in manifest.json file
-// under `content_scripts` property
+// @ts-ignore - Chrome extension APIs
+const chromeAPI = typeof chrome !== 'undefined' ? chrome : null;
 
-// For more information on Content Scripts,// See https://developer.chrome.com/extensions/content_scripts
-
-// Log `title` of current active web page
-// @ts-ignore
-let windowurl = window.location.href;
 let isProcessing = false;
+let currentUrl = window.location.href;
+let isCollectionActive = false;
+let buttonsVisible = false;
 
-let validTLDs = [
-  "AAA", "AARP", "ABB", "ABBOTT", "ABBVIE", "ABC", "ABLE", "ABOGADO", "ABUDHABI", "AC", "ACADEMY", "ACCENTURE", "ACCOUNTANT", "ACCOUNTANTS", "ACO", "ACTOR", "AD", "ADS", "ADULT", "AE", "AEG", "AERO", "AETNA", "AF", "AFL", "AFRICA", "AG", "AGAKHAN", "AGENCY", "AI", "AIG", "AIRBUS", "AIRFORCE", "AIRTEL", "AKDN", "AL", "ALIBABA", "ALIPAY", "ALLFINANZ", "ALLSTATE", "ALLY", "ALSACE", "ALSTOM", "AM", "AMAZON", "AMERICANEXPRESS", "AMERICANFAMILY", "AMEX", "AMFAM", "AMICA", "AMSTERDAM", "ANALYTICS", "ANDROID", "ANQUAN", "ANZ", "AO", "AOL", "APARTMENTS", "APP", "APPLE", "AQ", "AQUARELLE", "AR", "ARAB", "ARAMCO", "ARCHI", "ARMY", "ARPA", "ART", "ARTE", "AS", "ASDA", "ASIA", "ASSOCIATES", "AT", "ATHLETA", "ATTORNEY", "AU", "AUCTION", "AUDI", "AUDIBLE", "AUDIO", "AUSPOST", "AUTHOR", "AUTO", "AUTOS", "AW", "AWS", "AX", "AXA", "AZ", "AZURE", "BA", "BABY", "BAIDU", "BANAMEX", "BAND", "BANK", "BAR", "BARCELONA", "BARCLAYCARD", "BARCLAYS", "BAREFOOT", "BARGAINS", "BASEBALL", "BASKETBALL", "BAUHAUS", "BAYERN", "BB", "BBC", "BBT", "BBVA", "BCG", "BCN", "BD", "BE", "BEATS", "BEAUTY", "BEER", "BENTLEY", "BERLIN", "BEST", "BESTBUY", "BET", "BF", "BG", "BH", "BHARTI", "BI", "BIBLE", "BID", "BIKE", "BING", "BINGO", "BIO", "BIZ", "BJ", "BLACK", "BLACKFRIDAY", "BLOCKBUSTER", "BLOG", "BLOOMBERG", "BLUE", "BM", "BMS", "BMW", "BN", "BNPPARIBAS", "BO", "BOATS", "BOEHRINGER", "BOFA", "BOM", "BOND", "BOO", "BOOK", "BOOKING", "BOSCH", "BOSTIK", "BOSTON", "BOT", "BOUTIQUE", "BOX", "BR", "BRADESCO", "BRIDGESTONE", "BROADWAY", "BROKER", "BROTHER", "BRUSSELS", "BS", "BT", "BUILD", "BUILDERS", "BUSINESS", "BUY", "BUZZ", "BV", "BW", "BY", "BZ", "BZH", "CA", "CAB", "CAFE", "CAL", "CALL", "CALVINKLEIN", "CAM", "CAMERA", "CAMP", "CANON", "CAPETOWN", "CAPITAL", "CAPITALONE", "CAR", "CARAVAN", "CARDS", "CARE", "CAREER", "CAREERS", "CARS", "CASA", "CASE", "CASH", "CASINO", "CAT", "CATERING", "CATHOLIC", "CBA", "CBN", "CBRE", "CC", "CD", "CENTER", "CEO", "CERN", "CF", "CFA", "CFD", "CG", "CH", "CHANEL", "CHANNEL", "CHARITY", "CHASE", "CHAT", "CHEAP", "CHINTAI", "CHRISTMAS", "CHROME", "CHURCH", "CI", "CIPRIANI", "CIRCLE", "CISCO", "CITADEL", "CITI", "CITIC", "CITY", "CK", "CL", "CLAIMS", "CLEANING", "CLICK", "CLINIC", "CLINIQUE", "CLOTHING", "CLOUD", "CLUB", "CLUBMED", "CM", "CN", "CO", "COACH", "CODES", "COFFEE", "COLLEGE", "COLOGNE", "COM", "COMMBANK", "COMMUNITY", "COMPANY", "COMPARE", "COMPUTER", "COMSEC", "CONDOS", "CONSTRUCTION", "CONSULTING", "CONTACT", "CONTRACTORS", "COOKING", "COOL", "COOP", "CORSICA", "COUNTRY", "COUPON", "COUPONS", "COURSES", "CPA", "CR", "CREDIT", "CREDITCARD", "CREDITUNION", "CRICKET", "CROWN", "CRS", "CRUISE", "CRUISES", "CU", "CUISINELLA", "CV", "CW", "CX", "CY", "CYMRU", "CYOU", "CZ", "DAD", "DANCE", "DATA", "DATE", "DATING", "DATSUN", "DAY", "DCLK", "DDS", "DE", "DEAL", "DEALER", "DEALS", "DEGREE", "DELIVERY", "DELL", "DELOITTE", "DELTA", "DEMOCRAT", "DENTAL", "DENTIST", "DESI", "DESIGN", "DEV", "DHL", "DIAMONDS", "DIET", "DIGITAL", "DIRECT", "DIRECTORY", "DISCOUNT", "DISCOVER", "DISH", "DIY", "DJ", "DK", "DM", "DNP", "DO", "DOCS", "DOCTOR", "DOG", "DOMAINS", "DOT", "DOWNLOAD", "DRIVE", "DTV", "DUBAI", "DUNLOP", "DUPONT", "DURBAN", "DVAG", "DVR", "DZ", "EARTH", "EAT", "EC", "ECO", "EDEKA", "EDU", "EDUCATION", "EE", "EG", "EMAIL", "EMERCK", "ENERGY", "ENGINEER", "ENGINEERING", "ENTERPRISES", "EPSON", "EQUIPMENT", "ER", "ERICSSON", "ERNI", "ES", "ESQ", "ESTATE", "ET", "EU", "EUROVISION", "EUS", "EVENTS", "EXCHANGE", "EXPERT", "EXPOSED", "EXPRESS", "EXTRASPACE", "FAGE", "FAIL", "FAIRWINDS", "FAITH", "FAMILY", "FAN", "FANS", "FARM", "FARMERS", "FASHION", "FAST", "FEDEX", "FEEDBACK", "FERRARI", "FERRERO", "FI", "FIDELITY", "FIDO", "FILM", "FINAL", "FINANCE", "FINANCIAL", "FIRE", "FIRESTONE", "FIRMDALE", "FISH", "FISHING", "FIT", "FITNESS", "FJ", "FK", "FLICKR", "FLIGHTS", "FLIR", "FLORIST", "FLOWERS", "FLY", "FM", "FO", "FOO", "FOOD", "FOOTBALL", "FORD", "FOREX", "FORSALE", "FORUM", "FOUNDATION", "FOX", "FR", "FREE", "FRESENIUS", "FRL", "FROGANS", "FRONTIER", "FTR", "FUJITSU", "FUN", "FUND", "FURNITURE", "FUTBOL", "FYI", "GA", "GAL", "GALLERY", "GALLO", "GALLUP", "GAME", "GAMES", "GAP", "GARDEN", "GAY", "GB", "GBIZ", "GD", "GDN", "GE", "GEA", "GENT", "GENTING", "GEORGE", "GF", "GG", "GGEE", "GH", "GI", "GIFT", "GIFTS", "GIVES", "GIVING", "GL", "GLASS", "GLE", "GLOBAL", "GLOBO", "GM", "GMAIL", "GMBH", "GMO", "GMX", "GN", "GODADDY", "GOLD", "GOLDPOINT", "GOLF", "GOO", "GOODYEAR", "GOOG", "GOOGLE", "GOP", "GOT", "GOV", "GP", "GQ", "GR", "GRAINGER", "GRAPHICS", "GRATIS", "GREEN", "GRIPE", "GROCERY", "GROUP", "GS", "GT", "GU", "GUCCI", "GUGE", "GUIDE", "GUITARS", "GURU", "GW", "GY", "HAIR", "HAMBURG", "HANGOUT", "HAUS", "HBO", "HDFC", "HDFCBANK", "HEALTH", "HEALTHCARE", "HELP", "HELSINKI", "HERE", "HERMES", "HIPHOP", "HISAMITSU", "HITACHI", "HIV", "HK", "HKT", "HM", "HN", "HOCKEY", "HOLDINGS", "HOLIDAY", "HOMEDEPOT", "HOMEGOODS", "HOMES", "HOMESENSE", "HONDA", "HORSE", "HOSPITAL", "HOST", "HOSTING", "HOT", "HOTELS", "HOTMAIL", "HOUSE", "HOW", "HR", "HSBC", "HT", "HU", "HUGHES", "HYATT", "HYUNDAI", "IBM", "ICBC", "ICE", "ICU", "ID", "IE", "IEEE", "IFM", "IKANO", "IL", "IM", "IMAMAT", "IMDB", "IMMO", "IMMOBILIEN", "IN", "INC", "INDUSTRIES", "INFINITI", "INFO", "ING", "INK", "INSTITUTE", "INSURANCE", "INSURE", "INT", "INTERNATIONAL", "INTUIT", "INVESTMENTS", "IO", "IPIRANGA", "IQ", "IR", "IRISH", "IS", "ISMAILI", "IST", "ISTANBUL", "IT", "ITAU", "ITV", "JAGUAR", "JAVA", "JCB", "JE", "JEEP", "JETZT", "JEWELRY", "JIO", "JLL", "JM", "JMP", "JNJ", "JO", "JOBS", "JOBURG", "JOT", "JOY", "JP", "JPMORGAN", "JPRS", "JUEGOS", "JUNIPER", "KAUFEN", "KDDI", "KE", "KERRYHOTELS", "KERRYLOGISTICS", "KERRYPROPERTIES", "KFH", "KG", "KH", "KI", "KIA", "KIDS", "KIM", "KINDLE", "KITCHEN", "KIWI", "KM", "KN", "KOELN", "KOMATSU", "KOSHER", "KP", "KPMG", "KPN", "KR", "KRD", "KRED", "KUOKGROUP", "KW", "KY", "KYOTO", "KZ", "LA", "LACAIXA", "LAMBORGHINI", "LAMER", "LANCASTER", "LAND", "LANDROVER", "LANXESS", "LASALLE", "LAT", "LATINO", "LATROBE", "LAW", "LAWYER", "LB", "LC", "LDS", "LEASE", "LECLERC", "LEFRAK", "LEGAL", "LEGO", "LEXUS", "LGBT", "LI", "LIDL", "LIFE", "LIFEINSURANCE", "LIFESTYLE", "LIGHTING", "LIKE", "LILLY", "LIMITED", "LIMO", "LINCOLN", "LINK", "LIPSY", "LIVE", "LIVING", "LK", "LLC", "LLP", "LOAN", "LOANS", "LOCKER", "LOCUS", "LOL", "LONDON", "LOTTE", "LOTTO", "LOVE", "LPL", "LPLFINANCIAL", "LR", "LS", "LT", "LTD", "LTDA", "LU", "LUNDBECK", "LUXE", "LUXURY", "LV", "LY", "MA", "MADRID", "MAIF", "MAISON", "MAKEUP", "MAN", "MANAGEMENT", "MANGO", "MAP", "MARKET", "MARKETING", "MARKETS", "MARRIOTT", "MARSHALLS", "MATTEL", "MBA", "MC", "MCKINSEY", "MD", "ME", "MED", "MEDIA", "MEET", "MELBOURNE", "MEME", "MEMORIAL", "MEN", "MENU", "MERCKMSD", "MG", "MH", "MIAMI", "MICROSOFT", "MIL", "MINI", "MINT", "MIT", "MITSUBISHI", "MK", "ML", "MLB", "MLS", "MM", "MMA", "MN", "MO", "MOBI", "MOBILE", "MODA", "MOE", "MOI", "MOM", "MONASH", "MONEY", "MONSTER", "MORMON", "MORTGAGE", "MOSCOW", "MOTO", "MOTORCYCLES", "MOV", "MOVIE", "MP", "MQ", "MR", "MS", "MSD", "MT", "MTN", "MTR", "MU", "MUSEUM", "MUSIC", "MV", "MW", "MX", "MY", "MZ", "NA", "NAB", "NAGOYA", "NAME", "NAVY", "NBA", "NC", "NE", "NEC", "NET", "NETBANK", "NETFLIX", "NETWORK", "NEUSTAR", "NEW", "NEWS", "NEXT", "NEXTDIRECT", "NEXUS", "NF", "NFL", "NG", "NGO", "NHK", "NI", "NICO", "NIKE", "NIKON", "NINJA", "NISSAN", "NISSAY", "NL", "NO", "NOKIA", "NORTON", "NOW", "NOWRUZ", "NOWTV", "NP", "NR", "NRA", "NRW", "NTT", "NU", "NYC", "NZ", "OBI", "OBSERVER", "OFFICE", "OKINAWA", "OLAYAN", "OLAYANGROUP", "OLLO", "OM", "OMEGA", "ONE", "ONG", "ONL", "ONLINE", "OOO", "OPEN", "ORACLE", "ORANGE", "ORG", "ORGANIC", "ORIGINS", "OSAKA", "OTSUKA", "OTT", "OVH", "PA", "PAGE", "PANASONIC", "PARIS", "PARS", "PARTNERS", "PARTS", "PARTY", "PAY", "PCCW", "PE", "PET", "PF", "PFIZER", "PG", "PH", "PHARMACY", "PHD", "PHILIPS", "PHONE", "PHOTO", "PHOTOGRAPHY", "PHOTOS", "PHYSIO", "PICS", "PICTET", "PICTURES", "PID", "PIN", "PING", "PINK", "PIONEER", "PIZZA", "PK", "PL", "PLACE", "PLAY", "PLAYSTATION", "PLUMBING", "PLUS", "PM", "PN", "PNC", "POHL", "POKER", "POLITIE", "PORN", "POST", "PR", "PRAMERICA", "PRAXI", "PRESS", "PRIME", "PRO", "PROD", "PRODUCTIONS", "PROF", "PROGRESSIVE", "PROMO", "PROPERTIES", "PROPERTY", "PROTECTION", "PRU", "PRUDENTIAL", "PS", "PT", "PUB", "PW", "PWC", "PY", "QA", "QPON", "QUEBEC", "QUEST", "RACING", "RADIO", "RE", "READ", "REALESTATE", "REALTOR", "REALTY", "RECIPES", "RED", "REDSTONE", "REDUMBRELLA", "REHAB", "REISE", "REISEN", "REIT", "RELIANCE", "REN", "RENT", "RENTALS", "REPAIR", "REPORT", "REPUBLICAN", "REST", "RESTAURANT", "REVIEW", "REVIEWS", "REXROTH", "RICH", "RICHARDLI", "RICOH", "RIL", "RIO", "RIP", "RO", "ROCKS", "RODEO", "ROGERS", "ROOM", "RS", "RSVP", "RU", "RUGBY", "RUHR", "RUN", "RW", "RWE", "RYUKYU", "SA", "SAARLAND", "SAFE", "SAFETY", "SAKURA", "SALE", "SALON", "SAMSCLUB", "SAMSUNG", "SANDVIK", "SANDVIKCOROMANT", "SANOFI", "SAP", "SARL", "SAS", "SAVE", "SAXO", "SB", "SBI", "SBS", "SC", "SCB", "SCHAEFFLER", "SCHMIDT", "SCHOLARSHIPS", "SCHOOL", "SCHULE", "SCHWARZ", "SCIENCE", "SCOT", "SD", "SE", "SEARCH", "SEAT", "SECURE", "SECURITY", "SEEK", "SELECT", "SENER", "SERVICES", "SEVEN", "SEW", "SEX", "SEXY", "SFR", "SG", "SH", "SHANGRILA", "SHARP", "SHELL", "SHIA", "SHIKSHA", "SHOES", "SHOP", "SHOPPING", "SHOUJI", "SHOW", "SI", "SILK", "SINA", "SINGLES", "SITE", "SJ", "SK", "SKI", "SKIN", "SKY", "SKYPE", "SL", "SLING", "SM", "SMART", "SMILE", "SN", "SNCF", "SO", "SOCCER", "SOCIAL", "SOFTBANK", "SOFTWARE", "SOHU", "SOLAR", "SOLUTIONS", "SONG", "SONY", "SOY", "SPA", "SPACE", "SPORT", "SPOT", "SR", "SRL", "SS", "ST", "STADA", "STAPLES", "STAR", "STATEBANK", "STATEFARM", "STC", "STCGROUP", "STOCKHOLM", "STORAGE", "STORE", "STREAM", "STUDIO", "STUDY", "STYLE", "SU", "SUCKS", "SUPPLIES", "SUPPLY", "SUPPORT", "SURF", "SURGERY", "SUZUKI", "SV", "SWATCH", "SWISS", "SX", "SY", "SYDNEY", "SYSTEMS", "SZ", "TAB", "TAIPEI", "TALK", "TAOBAO", "TARGET", "TATAMOTORS", "TATAR", "TATTOO", "TAX", "TAXI", "TC", "TCI", "TD", "TDK", "TEAM", "TECH", "TECHNOLOGY", "TEL", "TEMASEK", "TENNIS", "TEVA", "TF", "TG", "TH", "THD", "THEATER", "THEATRE", "TIAA", "TICKETS", "TIENDA", "TIPS", "TIRES", "TIROL", "TJ", "TJMAXX", "TJX", "TK", "TKMAXX", "TL", "TM", "TMALL", "TN", "TO", "TODAY", "TOKYO", "TOOLS", "TOP", "TORAY", "TOSHIBA", "TOTAL", "TOURS", "TOWN", "TOYOTA", "TOYS", "TR", "TRADE", "TRADING", "TRAINING", "TRAVEL", "TRAVELERS", "TRAVELERSINSURANCE", "TRUST", "TRV", "TT", "TUBE", "TUI", "TUNES", "TUSHU", "TV", "TVS", "TW", "TZ", "UA", "UBANK", "UBS", "UG", "UK", "UNICOM", "UNIVERSITY", "UNO", "UOL", "UPS", "US", "UY", "UZ", "VA", "VACATIONS", "VANA", "VANGUARD", "VC", "VE", "VEGAS", "VENTURES", "VERISIGN", "VERSICHERUNG", "VET", "VG", "VI", "VIAJES", "VIDEO", "VIG", "VIKING", "VILLAS", "VIN", "VIP", "VIRGIN", "VISA", "VISION", "VIVA", "VIVO", "VLAANDEREN", "VN", "VODKA", "VOLVO", "VOTE", "VOTING", "VOTO", "VOYAGE", "VU", "WALES", "WALMART", "WALTER", "WANG", "WANGGOU", "WATCH", "WATCHES", "WEATHER", "WEATHERCHANNEL", "WEBCAM", "WEBER", "WEBSITE", "WED", "WEDDING", "WEIBO", "WEIR", "WF", "WHOSWHO", "WIEN", "WIKI", "WILLIAMHILL", "WIN", "WINDOWS", "WINE", "WINNERS", "WME", "WOLTERSKLUWER", "WOODSIDE", "WORK", "WORKS", "WORLD", "WOW", "WS", "WTC", "WTF", "XBOX", "XEROX", "XIHUAN", "XIN", "XN--11B4C3D", "XN--1CK2E1B", "XN--1QQW23A", "XN--2SCRJ9C", "XN--30RR7Y", "XN--3BST00M", "XN--3DS443G", "XN--3E0B707E", "XN--3HCRJ9C", "XN--3PXU8K", "XN--42C2D9A", "XN--45BR5CYL", "XN--45BRJ9C", "XN--45Q11C", "XN--4DBRK0CE", "XN--4GBRIM", "XN--54B7FTA0CC", "XN--55QW42G", "XN--55QX5D", "XN--5SU34J936BGSG", "XN--5TZM5G", "XN--6FRZ82G", "XN--6QQ986B3XL", "XN--80ADXHKS", "XN--80AO21A", "XN--80AQECDR1A", "XN--80ASEHDB", "XN--80ASWG", "XN--8Y0A063A", "XN--90A3AC", "XN--90AE", "XN--90AIS", "XN--9DBQ2A", "XN--9ET52U", "XN--9KRT00A", "XN--B4W605FERD", "XN--BCK1B9A5DRE4C", "XN--C1AVG", "XN--C2BR7G", "XN--CCK2B3B", "XN--CCKWCXETD", "XN--CG4BKI", "XN--CLCHC0EA0B2G2A9GCD", "XN--CZR694B", "XN--CZRS0T", "XN--CZRU2D", "XN--D1ACJ3B", "XN--D1ALF", "XN--E1A4C", "XN--ECKVDTC9D", "XN--EFVY88H", "XN--FCT429K", "XN--FHBEI", "XN--FIQ228C5HS", "XN--FIQ64B", "XN--FIQS8S", "XN--FIQZ9S", "XN--FJQ720A", "XN--FLW351E", "XN--FPCRJ9C3D", "XN--FZC2C9E2C", "XN--FZYS8D69UVGM", "XN--G2XX48C", "XN--GCKR3F0F", "XN--GECRJ9C", "XN--GK3AT1E", "XN--H2BREG3EVE", "XN--H2BRJ9C", "XN--H2BRJ9C8C", "XN--HXT814E", "XN--I1B6B1A6A2E", "XN--IMR513N", "XN--IO0A7I", "XN--J1AEF", "XN--J1AMH", "XN--J6W193G", "XN--JLQ480N2RG", "XN--JVR189M", "XN--KCRX77D1X4A", "XN--KPRW13D", "XN--KPRY57D", "XN--KPUT3I", "XN--L1ACC", "XN--LGBBAT1AD8J", "XN--MGB9AWBF", "XN--MGBA3A3EJT", "XN--MGBA3A4F16A", "XN--MGBA7C0BBN0A", "XN--MGBAAM7A8H", "XN--MGBAB2BD", "XN--MGBAH1A3HJKRD", "XN--MGBAI9AZGQP6J", "XN--MGBAYH7GPA", "XN--MGBBH1A", "XN--MGBBH1A71E", "XN--MGBC0A9AZCG", "XN--MGBCA7DZDO", "XN--MGBCPQ6GPA1A", "XN--MGBERP4A5D4AR", "XN--MGBGU82A", "XN--MGBI4ECEXP", "XN--MGBPL2FH", "XN--MGBT3DHD", "XN--MGBTX2B", "XN--MGBX4CD0AB", "XN--MIX891F", "XN--MK1BU44C", "XN--MXTQ1M", "XN--NGBC5AZD", "XN--NGBE9E0A", "XN--NGBRX", "XN--NODE", "XN--NQV7F", "XN--NQV7FS00EMA", "XN--NYQY26A", "XN--O3CW4H", "XN--OGBPF8FL", "XN--OTU796D", "XN--P1ACF", "XN--P1AI", "XN--PGBS0DH", "XN--PSSY2U", "XN--Q7CE6A", "XN--Q9JYB4C", "XN--QCKA1PMC", "XN--QXA6A", "XN--QXAM", "XN--RHQV96G", "XN--ROVU88B", "XN--RVC1E0AM3E", "XN--S9BRJ9C", "XN--SES554G", "XN--T60B56A", "XN--TCKWE", "XN--TIQ49XQYJ", "XN--UNUP4Y", "XN--VERMGENSBERATER-CTB", "XN--VERMGENSBERATUNG-PWB", "XN--VHQUV", "XN--VUQ861B", "XN--W4R85EL8FHU5DNRA", "XN--W4RS40L", "XN--WGBH1C", "XN--WGBL6A", "XN--XHQ521B", "XN--XKC2AL3HYE2A", "XN--XKC2DL3A5EE0H", "XN--Y9A3AQ", "XN--YFRO4I67O", "XN--YGBI2AMMX", "XN--ZFR164B", "XXX", "XYZ", "YACHTS", "YAHOO", "YAMAXUN", "YANDEX", "YE", "YODOBASHI", "YOGA", "YOKOHAMA", "YOU", "YOUTUBE", "YT", "YUN", "ZA", "ZAPPOS", "ZARA", "ZERO", "ZIP", "ZM", "ZONE", "ZUERICH", "ZW"
-]
+// Storage keys
+const STORAGE_KEY_CONTENT = 'google_search_results';
+const ACTIVE_KEY_CONTENT = 'google_collector_active';
 
+// Utility function to clean text
+function clean(text) {
+    return (text || '').replace(/\s+/g, ' ').replace(/"/g, "'").trim();
+}
 
-const isValidTLD = (tld) => {
-  return validTLDs.includes(tld.toUpperCase());
-};
-
-const replaceSpacedLinks = (text) => {
-  console.log("Replacing spaced links");
-  const domainRegex = /(?<!\S)([a-zA-Z0-9-]+(?:\s*\.\s*[a-zA-Z0-9-]+)+(?:\s*\/\s*[a-zA-Z0-9-]+)*)\b(?!\.?\s*\n)/g;
-
-  return text.replace(domainRegex, (match, p1, offset, string) => {
-    const beforeMatch = string.substring(0, offset);
-    const afterMatch = string.substring(offset + match.length);
-    if (beforeMatch.lastIndexOf('<a') > beforeMatch.lastIndexOf('</a') ||
-      afterMatch.indexOf('</a') < afterMatch.indexOf('<a')) {
-      return match;
+// Check if collection is active
+async function checkCollectionStatus() {
+    try {
+        if (chromeAPI && chromeAPI.storage) {
+            const result = await chromeAPI.storage.local.get([ACTIVE_KEY_CONTENT]);
+            isCollectionActive = result[ACTIVE_KEY_CONTENT] || false;
+        } else {
+            const stored = localStorage.getItem(ACTIVE_KEY_CONTENT);
+            isCollectionActive = stored === 'true';
+        }
+        return isCollectionActive;
+    } catch (error) {
+        console.error('Error checking collection status:', error);
+        return false;
     }
-    const url = match.replace(/\s+/g, '');
-    const domain = url.split('/').shift();
-    console.log("URL:", domain);
-    console.log("Domain:", domain);
-    let tld = domain.split('.').pop();
-    // remove any route after the domain
-    tld = tld.split('/').shift();
-    console.log("TLD:", tld, isValidTLD(tld));
-    if (!isValidTLD(tld)) {
-      return match;
+}
+
+// Get stored results from Chrome storage
+async function getStoredResults() {
+    try {
+        if (chromeAPI && chromeAPI.storage) {
+            const result = await chromeAPI.storage.local.get([STORAGE_KEY_CONTENT]);
+            return result[STORAGE_KEY_CONTENT] || {
+                metadata: { queries: [], totalPages: 0, collectionStarted: null },
+                results: [['title', 'link', 'description', 'page', 'timestamp']]
+            };
+        }
+        // Fallback to localStorage if Chrome storage not available
+        const stored = localStorage.getItem(STORAGE_KEY_CONTENT);
+        return stored ? JSON.parse(stored) : {
+            metadata: { queries: [], totalPages: 0, collectionStarted: null },
+            results: [['title', 'link', 'description', 'page', 'timestamp']]
+        };
+    } catch (error) {
+        console.error('Error getting stored results:', error);
+        return {
+            metadata: { queries: [], totalPages: 0, collectionStarted: null },
+            results: [['title', 'link', 'description', 'page', 'timestamp']]
+        };
     }
-    console.log("Replaced link:", match, "with:", url);
-    return `<a href="https://${url}" style="color: #1DA1F2; text-decoration: inherit;" target="_blank" rel="noopener noreferrer">${url}</a>`;
-  });
-};
+}
 
-const renderTweet = (tweetElement) => {
-  if (tweetElement instanceof HTMLElement && !tweetElement.dataset.processed) {
-    const tweetText = tweetElement.querySelector('[data-testid="tweetText"]');
-    const tweetImage = tweetElement.querySelector('[data-testid="tweetPhoto"]');
+// Save results to Chrome storage
+async function saveResults(data) {
+    try {
+        if (chromeAPI && chromeAPI.storage) {
+            await chromeAPI.storage.local.set({ [STORAGE_KEY_CONTENT]: data });
+        } else {
+            // Fallback to localStorage
+            localStorage.setItem(STORAGE_KEY_CONTENT, JSON.stringify(data));
+        }
+    } catch (error) {
+        console.error('Error saving results:', error);
+    }
+}
 
-    if (tweetText) {
-      const originalText = tweetText.innerHTML || '';
-      const replacedText = replaceSpacedLinks(originalText);
-      tweetText.innerHTML = replacedText;
+// Extract search query from URL
+function getSearchQuery() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return clean(urlParams.get('q') || 'unknown query');
+}
+
+// Extract page number from URL
+function getPageNumber() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const start = urlParams.get('start');
+    return start ? Math.floor(parseInt(start) / 10) + 1 : 1;
+}
+
+// Process search results on current page
+async function processResults() {
+    if (isProcessing || !isCollectionActive) return 0;
+    isProcessing = true;
+
+    try {
+        const data = await getStoredResults();
+        const results = [...document.querySelectorAll('div.tF2Cxc')];
+        let newCount = 0;
+        
+        const query = getSearchQuery();
+        const page = getPageNumber();
+        const timestamp = new Date().toISOString();
+
+        // Add query to metadata if not already present
+        if (!data.metadata.queries.includes(query)) {
+            data.metadata.queries.push(query);
+        }
+
+        // Update metadata
+        data.metadata.totalPages = Math.max(data.metadata.totalPages, page);
+        if (!data.metadata.collectionStarted) {
+            data.metadata.collectionStarted = timestamp;
+        }
+
+        results.forEach(r => {
+            const titleElement = r.querySelector('h3');
+            const linkElement = r.querySelector('a');
+            const descElement = r.querySelector('.VwiC3b');
+
+            const title = clean(titleElement?.textContent || 'no title');
+            const link = clean(linkElement?.href || 'no link');
+            const description = clean(descElement?.textContent || 'no description');
+            
+            // Check if this result already exists to avoid duplicates
+            const exists = data.results.some(row => row[1] === link);
+            if (!exists && link !== 'no link') {
+                data.results.push([title, link, description, page, timestamp]);
+                newCount++;
+            }
+        });
+        
+        await saveResults(data);
+        await updateButtonText();
+        console.log(`Google Results Collector: Added ${newCount} new results. Total: ${data.results.length - 1}`);
+        return newCount;
+    } catch (error) {
+        console.error('Error processing results:', error);
+        return 0;
+    } finally {
+        isProcessing = false;
+    }
+}
+
+// Download CSV file
+async function downloadCSV() {
+    try {
+        const data = await getStoredResults();
+        
+        if (data.results.length <= 1) {
+            showNotification('No data to download');
+            return;
+        }
+        
+        // Create CSV with metadata rows at the top
+        const csvRows = [];
+        
+        // Add metadata as visible rows in the CSV
+        csvRows.push(['Collection Info', '', '', '', '']);
+        csvRows.push(['Generated', new Date().toISOString(), '', '', '']);
+        csvRows.push(['Collection Started', data.metadata.collectionStarted || 'Unknown', '', '', '']);
+        csvRows.push(['Total Results', (data.results.length - 1).toString(), '', '', '']);
+        csvRows.push(['Total Pages', data.metadata.totalPages.toString(), '', '', '']);
+        csvRows.push(['Queries', data.metadata.queries.join(' | '), '', '', '']);
+        csvRows.push(['', '', '', '', '']); // Empty separator row
+        
+        // Add the header row and data
+        csvRows.push(...data.results);
+        
+        // Convert to CSV string
+        const csvContent = csvRows.map(row => 
+            row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(',')
+        ).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `google_results_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showNotification('CSV downloaded successfully!', 'hsl(142 76% 36%)');
+    } catch (error) {
+        console.error('Error downloading CSV:', error);
+        showNotification('Error downloading CSV', 'hsl(0 62.8% 30.6%)');
+    }
+}
+
+// Clear all stored results
+async function clearResults() {
+    try {
+        if (chromeAPI && chromeAPI.storage) {
+            await chromeAPI.storage.local.remove([STORAGE_KEY_CONTENT]);
+        } else {
+            localStorage.removeItem(STORAGE_KEY_CONTENT);
+        }
+        await updateButtonText();
+        showNotification('All results cleared', 'hsl(45 93% 47%)');
+        console.log('Google Results Collector: Cleared all stored results');
+    } catch (error) {
+        console.error('Error clearing results:', error);
+    }
+}
+
+// Update button text with current count
+async function updateButtonText() {
+    const data = await getStoredResults();
+    const count = data.results.length - 1; // Subtract header row
+    const downloadBtn = document.getElementById('google-csv-download');
+    if (downloadBtn) {
+        downloadBtn.textContent = `Download CSV (${count})`;
+    }
+}
+
+// Show notification to user
+function showNotification(message, color = 'hsl(0 0% 15%)') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${color};
+        color: hsl(0 0% 100%);
+        padding: 12px 16px;
+        border-radius: 6px;
+        border: 1px solid hsl(0 0% 25%);
+        z-index: 10000;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        max-width: 300px;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+// Create control buttons
+async function createButtons() {
+    if (!isCollectionActive) {
+        removeButtons();
+        return;
     }
 
-    if (tweetImage && tweetImage instanceof HTMLElement) {
-      tweetImage.style.display = 'block';
+    // Remove existing buttons
+    const existingButtons = document.querySelectorAll('[id^="google-csv-"]');
+    existingButtons.forEach(btn => btn.remove());
+
+    // Button container
+    const container = document.createElement('div');
+    container.id = 'google-csv-container';
+    container.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        gap: 8px;
+        z-index: 10000;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    `;
+
+    // Download button (icon only) - Feather download icon
+    const downloadBtn = document.createElement('button');
+    downloadBtn.id = 'google-csv-download';
+    downloadBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7,10 12,15 17,10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+    `;
+    downloadBtn.style.cssText = `
+        background: hsl(142 76% 36%);
+        color: hsl(0 0% 100%);
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.2s ease;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    downloadBtn.onmouseover = () => {
+        downloadBtn.style.background = 'hsl(142 76% 32%)';
+        downloadBtn.style.transform = 'translateY(-1px)';
+    };
+    downloadBtn.onmouseout = () => {
+        downloadBtn.style.background = 'hsl(142 76% 36%)';
+        downloadBtn.style.transform = 'translateY(0)';
+    };
+    downloadBtn.onclick = downloadCSV;
+
+    // Stop button (icon only) - Feather square icon  
+    const stopBtn = document.createElement('button');
+    stopBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        </svg>
+    `;
+    stopBtn.style.cssText = `
+        background: hsl(0 62.8% 30.6%);
+        color: hsl(0 0% 100%);
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.2s ease;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    stopBtn.onmouseover = () => {
+        stopBtn.style.background = 'hsl(0 62.8% 25%)';
+        stopBtn.style.transform = 'translateY(-1px)';
+    };
+    stopBtn.onmouseout = () => {
+        stopBtn.style.background = 'hsl(0 62.8% 30.6%)';
+        stopBtn.style.transform = 'translateY(0)';
+    };
+    stopBtn.onclick = stopCollection;
+
+    container.appendChild(downloadBtn);
+    container.appendChild(stopBtn);
+    document.body.appendChild(container);
+
+    buttonsVisible = true;
+    await updateButtonText();
+}
+
+// Remove control buttons
+function removeButtons() {
+    const container = document.getElementById('google-csv-container');
+    if (container) {
+        container.remove();
+    }
+    const styles = document.getElementById('google-csv-styles');
+    if (styles) {
+        styles.remove();
+    }
+    buttonsVisible = false;
+}
+
+// Listen for messages from popup
+if (chromeAPI && chromeAPI.runtime) {
+    chromeAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'start') {
+            startCollection();
+        } else if (message.action === 'stop') {
+            stopCollection();
+        }
+        return true;
+    });
+}
+
+// Start collection
+async function startCollection() {
+    isCollectionActive = true;
+    await createButtons();
+    await main();
+    showNotification('Collection started! Results will be collected as you browse.', 'hsl(142 76% 36%)');
+}
+
+// Stop collection
+async function stopCollection() {
+    isCollectionActive = false;
+    removeButtons();
+    showNotification('Collection stopped.', 'hsl(45 93% 47%)');
+}
+
+// Main processing function
+async function main() {
+    console.log('Google Results Collector: Processing page');
+    
+    // Only process if we're on a Google search results page
+    if (!window.location.href.includes('/search')) {
+        return;
     }
 
-    tweetElement.dataset.processed = 'true';
-  }
-};
-
-const main = () => {
-  if (isProcessing) return;
-  isProcessing = true;
-  console.log("Main function called");
-
-  const tweets = document.querySelectorAll('[data-testid="tweet"]');
-  for (const tweet of tweets) {
-    console.log("Processing tweet", tweet);
-    renderTweet(tweet);
-  }
-
-  console.log("Tweets processed");
-  isProcessing = false;
-};
-
-const checkMutations = () => {
-  console.log("Setting up mutation observer");
-  let observer = new MutationObserver((mutations, observer) => {
-    const tweets = document.querySelectorAll('[data-testid="tweet"]');
-    if (tweets.length > 0) {
-      const visibleTweets = Array.from(tweets).filter(tweet => {
-        const rect = tweet.getBoundingClientRect();
-        return rect.top >= 0 && rect.bottom <= window.innerHeight;
-      });
-
-      if (visibleTweets.length > 0) {
-        console.log("Visible tweets detected, calling main function");
-        main();
-      }
+    // Check collection status
+    await checkCollectionStatus();
+    
+    // Update buttons based on collection status
+    if (isCollectionActive && !buttonsVisible) {
+        await createButtons();
+    } else if (!isCollectionActive && buttonsVisible) {
+        removeButtons();
     }
-  });
 
-  observer.observe(document.body, {
-    subtree: true, childList: true, attributes: false
-  });
-};
-
-checkMutations();
-
-window.addEventListener('DOMContentLoaded', async () => {
-  console.log("DOM loaded");
-  console.log('TLDs:', validTLDs.length);
-  main();
-});
-
-window.addEventListener('popstate', () => {
-  console.log("Route changed");
-  main();
-});
-
-window.addEventListener("click", () => {
-  requestAnimationFrame(() => {
-    if (windowurl !== window.location.href) {
-      console.log("URL changed");
-      windowurl = window.location.href;
-      main();
+    // Only process results if collection is active
+    if (!isCollectionActive) {
+        return;
     }
-  });
-}, true);
 
-window.addEventListener('beforeunload', () => {
-  console.log("Page unloading");
-});
+    const newResults = await processResults();
+    
+    if (newResults > 0) {
+        showNotification(`Collected ${newResults} new results from this page`);
+    }
+}
 
-window.addEventListener('hashchange', () => {
-  console.log("Hash changed");
-  main();
-});
+// Set up mutation observer for dynamic content
+function observeChanges() {
+    const observer = new MutationObserver((mutations) => {
+        const hasNewResults = mutations.some(mutation => 
+            Array.from(mutation.addedNodes).some(node => 
+                node.nodeType === 1 && 
+                ((node instanceof Element && node.querySelector && node.querySelector('.tF2Cxc')) || 
+                 (node instanceof Element && node.classList && node.classList.contains('tF2Cxc')))
+            )
+        );
+        
+        if (hasNewResults) {
+            setTimeout(main, 500); // Small delay to ensure DOM is stable
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', main);
+} else {
+    main();
+}
+
+// Set up change detection
+observeChanges();
+
+// Handle navigation changes
+let lastUrl = window.location.href;
+new MutationObserver(() => {
+    const currentUrl = window.location.href;
+    if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        setTimeout(main, 1000); // Delay to allow page to load
+    }
+}).observe(document, { subtree: true, childList: true });
+
+console.log('Google Results Collector: Extension loaded and ready');
 /******/ })()
 ;
 //# sourceMappingURL=contentScript.js.map
